@@ -1,0 +1,23 @@
+{
+ "n": 20000,
+ "k": 80000,
+ "classes": [
+  "central",
+  "optic",
+  "sensory",
+  "motor",
+  "descending",
+  "ascending"
+ ],
+ "source": "SINTETIS (bukan data lalat)",
+ "counts": {
+  "central": 9029,
+  "optic": 5877,
+  "sensory": 2043,
+  "motor": 818,
+  "descending": 1262,
+  "ascending": 971
+ },
+ "estimated": 0,
+ "flip_y": true
+}

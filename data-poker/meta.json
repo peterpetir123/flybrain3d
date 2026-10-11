@@ -1,0 +1,18 @@
+{
+ "n": 41000,
+ "k": 120000,
+ "classes": [
+  "sensory",
+  "central",
+  "descending"
+ ],
+ "source": "MaleCNS v1.0 via connectome.export_brain (otak yang dipakai agent poker)",
+ "counts": {
+  "sensory": 8000,
+  "central": 30000,
+  "descending": 3000
+ },
+ "estimated": 9902,
+ "flip_y": true,
+ "total_edges": 1655956
+}

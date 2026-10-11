@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Otak Lalat 3D — aktivitas & perasaan</title>
+<style>
+  :root {
+    --bg: #050912;
+    --panel: rgba(11, 20, 36, 0.82);
+    --line: #1d3552;
+    --ink: #cfe3f5;
+    --muted: #8fb0c9;
+    --accent: #7fd4ff;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink);
+    font: 13px/1.5 system-ui, -apple-system, Segoe UI, sans-serif; overflow: hidden; }
+  #view { position: fixed; inset: 0; }
+  .panel { position: fixed; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 10px; padding: 10px 12px; backdrop-filter: blur(6px); }
+  b { color: var(--accent); }
+
+  /* --- navigasi kiri / kanan --- */
+  #nav { top: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px;
+    align-items: center; padding: 8px 10px; }
+  #nav button { background: #12233a; color: var(--ink); border: 1px solid var(--line);
+    border-radius: 7px; padding: 6px 12px; cursor: pointer; font-size: 14px; min-width: 40px; }
+  #nav button:hover { background: #1b3352; border-color: var(--accent); }
+  #nav button:active { transform: translateY(1px); }
+  #nav .sep { width: 1px; height: 22px; background: var(--line); margin: 0 4px; }
+  #nav .hint { color: var(--muted); font-size: 11px; padding: 0 4px; }
+
+  /* --- panel kiri: kelas neuron --- */
+  #legend { top: 12px; left: 12px; max-width: 215px; }
+  #legend label { display: flex; align-items: center; gap: 6px; margin: 3px 0; cursor: pointer; }
+  #legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
+  #legend .lvl { margin-left: auto; font-variant-numeric: tabular-nums; opacity: .75; }
+  #stat { margin-top: 8px; opacity: .65; font-size: 11px; }
+
+  /* --- panel kanan: kendali --- */
+  #ctl { top: 12px; right: 12px; max-width: 230px; }
+  #ctl label { display: block; margin: 5px 0; }
+  #ctl .scenarios { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+  #ctl .scenarios button { background: #12233a; color: var(--ink); border: 1px solid var(--line);
+    border-radius: 999px; padding: 4px 10px; cursor: pointer; font-size: 11px; }
+  #ctl .scenarios button.on { background: var(--accent); color: #04121f; border-color: var(--accent); }
+
+  /* --- panel bawah: apa yang dirasakan lalat --- */
+  #feel { bottom: 12px; left: 12px; right: 12px; max-width: 760px; margin: 0 auto; }
+  #feel .head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  #feel .mood { font-size: 15px; font-weight: 700; color: #fff; }
+  #feel .meter { flex: 1 1 160px; height: 8px; border-radius: 99px; background: #0d1b2e;
+    overflow: hidden; border: 1px solid var(--line); min-width: 120px; }
+  #feel .meter span { display: block; height: 100%; width: 0%;
+    background: linear-gradient(90deg, #2ec4b6, #ffd166, #f94144); transition: width .12s linear; }
+  #feel .pct { font-variant-numeric: tabular-nums; color: var(--muted); min-width: 52px; text-align: right; }
+  #feel .say { margin-top: 6px; font-size: 14px; color: #eaf4ff; }
+  #feel .why { margin-top: 3px; font-size: 11.5px; color: var(--muted); }
+  #feel .zones { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  #feel .zone { display: flex; align-items: center; gap: 5px; font-size: 11px;
+    border: 1px solid var(--line); border-radius: 999px; padding: 3px 9px; background: #0d1b2e; }
+  #feel .zone i { width: 8px; height: 8px; border-radius: 50%; }
+  #feel .zone.live { border-color: var(--accent); box-shadow: 0 0 10px rgba(127,212,255,.35); }
+
+  #info { position: fixed; bottom: 132px; left: 12px; max-width: 260px; display: none; }
+  kbd { background: #12233a; border: 1px solid var(--line); border-radius: 4px;
+    padding: 0 4px; font-size: 11px; }
+</style>
+</head>
+<body>
+<div id="view"></div>
+
+<div id="nav" class="panel">
+  <button id="left"  title="Putar ke kiri">&#9664;&#9664;</button>
+  <button id="panL"  title="Geser ke kiri">&#9664;</button>
+  <div class="sep"></div>
+  <span class="hint">geser / gulir untuk putar &middot; klik titik = lihat neuron</span>
+  <div class="sep"></div>
+  <button id="panR" title="Geser ke kanan">&#9654;</button>
+  <button id="right" title="Putar ke kanan">&#9654;&#9654;</button>
+  <button id="home" title="Kembali ke posisi awal">&#8635;</button>
+</div>
+
+<div id="legend" class="panel">
+  <b>Kelas neuron</b>
+  <div id="classes"></div>
+  <div id="stat"></div>
+</div>
+
+<div id="ctl" class="panel">
+  <b>Keadaan lalat</b>
+  <div class="scenarios" id="scenarios"></div>
+  <label style="margin-top:10px"><input type="checkbox" id="auto" checked>_putar otomatis</label>
+  <label><input type="checkbox" id="edges" checked> Koneksi terkuat</label>
+  <label><input type="checkbox" id="demo"> Demo acak</label>
+  <label>Ukuran <input type="range" id="size" min="0.3" max="3" step="0.1" value="1"></label>
+</div>
+
+<div id="info" class="panel"></div>
+
+<div id="feel" class="panel">
+  <div class="head">
+    <span class="mood" id="mood">istirahat</span>
+    <span class="meter"><span id="meterFill"></span></span>
+    <span class="pct" id="pct">0%</span>
+  </div>
+  <div class="say" id="say">Memuat…</div>
+  <div class="why" id="why"></div>
+  <div class="zones" id="zones"></div>
+</div>
+
+<script src="vendor/three.min.js"></script>
+<script src="vendor/OrbitControls.js"></script>
+<script src="brain.js"></script>
+<script src="activity.js"></script>
+<script src="poker-link.js"></script>
+<script>
+const fb = FlyBrain;
+const CLASS_ID = {};
+let activity = null;
+
+// ?data=data-poker/ memuat otak asli yang dipakai agent poker (41k neuron MaleCNS)
+const DATA_DIR = new URLSearchParams(location.search).get('data') || 'data/';
+fb.init(document.getElementById('view'), DATA_DIR).then(() => {
+  const box = document.getElementById('classes');
+  fb.meta.classes.forEach((c, i) => {
+    CLASS_ID[c] = i;
+    const l = document.createElement('label');
+    l.innerHTML =
+      `<input type="checkbox" checked><i style="background:${fb.colorOf(i)}"></i>` +
+      `<span>${c}</span><span class="lvl" data-lvl="${c}">0.00</span>`;
+    l.firstChild.onchange = (e) => fb.setClassVisible(i, e.target.checked);
+    box.appendChild(l);
+  });
+
+  document.getElementById('stat').textContent =
+    `${fb.meta.n} neuron · ${fb.meta.k} koneksi · sumber: ${fb.meta.source}`;
+
+  // ---------- aktivitas & perasaan ----------
+  activity = new FlyBrainActivity.Activity(fb);
+  activity.onChange = (sc) => {
+    document.getElementById('mood').textContent = sc.label;
+    document.getElementById('say').textContent = sc.feel;
+    document.getElementById('why').textContent = sc.detail;
+    document.querySelectorAll('#scenarios button').forEach((b) =>
+      b.classList.toggle('on', b.dataset.id === sc.id));
+  };
+  activity.play('istirahat');
+  // ?state=<id> untuk membuka langsung keadaan tertentu (mis. untuk tangkapan layar)
+  const want = new URLSearchParams(location.search).get('state');
+  if (want) { activity.auto = false; document.getElementById('auto').checked = false; activity.play(want); }
+  // ?live=<url server poker> menyalakan neuron dari keputusan lalat sungguhan
+  if (new URLSearchParams(location.search).get('live')) {
+    FlyBrainPokerLink.start(fb, activity);
+  }
+
+  const scen = document.getElementById('scenarios');
+  FlyBrainActivity.SCENARIOS.forEach((s) => {
+    const btn = document.createElement('button');
+    btn.textContent = s.label;
+    btn.dataset.id = s.id;
+    btn.onclick = () => { activity.auto = false; document.getElementById('auto').checked = false; activity.play(s.id); };
+    scen.appendChild(btn);
+  });
+
+  // zona yang menyala (chip kecil di panel bawah)
+  const zones = document.getElementById('zones');
+  fb.meta.classes.forEach((c) => {
+    const el = document.createElement('span');
+    el.className = 'zone';
+    el.dataset.zone = c;
+    el.innerHTML = `<i style="background:${fb.colorOf(CLASS_ID[c])}"></i>${c}`;
+    zones.appendChild(el);
+  });
+
+  // ---------- panel bawah: meter + zona ----------
+  const meterFill = document.getElementById('meterFill');
+  const pct = document.getElementById('pct');
+  const origStep = fb.step.bind(fb);
+  fb.step = function (dt) {
+    if (activity) activity.update(dt);
+    origStep(dt);
+    if (activity) {
+      const lvl = Math.min(1, fb.totalLevel() * 6);
+      meterFill.style.width = (lvl * 100).toFixed(1) + '%';
+      pct.textContent = Math.round(lvl * 100) + '%';
+      fb.meta.classes.forEach((c) => {
+        const v = fb.classLevel(c);
+        const l = document.querySelector(`[data-lvl="${c}"]`);
+        if (l) l.textContent = v.toFixed(2);
+        const z = document.querySelector(`[data-zone="${c}"]`);
+        if (z) z.classList.toggle('live', v > 0.02);
+      });
+    }
+  };
+
+  // ---------- navigasi kiri / kanan ----------
+  document.getElementById('left').onclick  = () => fb.spinY(-25);
+  document.getElementById('right').onclick = () => fb.spinY(25);
+  document.getElementById('panL').onclick  = () => fb.panX(-0.35);
+  document.getElementById('panR').onclick  = () => fb.panX(0.35);
+  document.getElementById('home').onclick  = () => fb.resetView();
+  addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft') fb.spinY(-15);
+    else if (e.key === 'ArrowRight') fb.spinY(15);
+    else if (e.key === 'r') fb.resetView();
+  });
+
+  // ---------- kendali lain ----------
+  edges.onchange = (e) => (fb.edgeLines.visible = e.target.checked);
+  demo.onchange  = (e) => (fb.demo = e.target.checked);
+  size.oninput   = (e) => (fb.points.material.uniforms.uScale.value = +e.target.value);
+  auto.onchange  = (e) => (activity.auto = e.target.checked);
+
+  fb.onPick = async (i) => {
+    const id = await fb.rootId(i);
+    const box = document.getElementById('info');
+    box.style.display = 'block';
+    box.innerHTML =
+      `<b>neuron #${i}</b> · ${fb.meta.classes[fb.cls[i]]}<br>` +
+      `root_id: ${id}<br>posisi: ${fb.est[i] ? 'estimasi' : 'terukur'}<br>` +
+      `derajat (0..1): ${fb.deg[i].toFixed(2)}`;
+  };
+}).catch((e) => {
+  document.getElementById('say').textContent = 'Gagal memuat data: ' + e.message;
+  console.error(e);
+});
+</script>
+</body>
+</html>
